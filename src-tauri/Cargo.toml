@@ -1,0 +1,26 @@
+[package]
+name = "vyro-client"
+version = "0.1.0"
+edition = "2021"
+description = "VYRO Client - Minecraft launcher"
+license = "MIT"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+launcher-core = { path = "../crates/launcher-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
+sysinfo = { version = "0.32", default-features = false, features = ["system"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
