@@ -1,8 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import type {
-  AccountList, AccountMeta, DeviceCode, GameExit, JavaInstall, LogLine, McVersion,
-  Profile, Progress, Settings, SystemInfo,
+  AccountList, AccountMeta, Collection, DeviceCode, GameExit, InstallReport, JavaInstall, LogLine, McVersion,
+  ModsView, Profile, Progress, ProjectDetail, SearchResult, Settings, Sort, SystemInfo, UpdateCheck,
 } from "./types";
 
 // Every function below maps 1:1 to a #[tauri::command] in src-tauri/src/main.rs.
@@ -25,11 +25,26 @@ export const api = {
   getSettings: () => invoke<Settings>("get_settings"),
   saveSettings: (settings: Settings) => invoke<void>("save_settings", { settings }),
   launch: (profileId: string) => invoke<void>("launch_profile", { profileId }),
+  modsSearch: (profileId: string, query: string, sort: Sort, offset: number) =>
+    invoke<SearchResult>("mods_search", { profileId, query, sort, offset }),
+  modsProject: (id: string) => invoke<ProjectDetail>("mods_project", { id }),
+  modsList: (profileId: string) => invoke<ModsView>("mods_list", { profileId }),
+  modsCollections: () => invoke<Collection[]>("mods_collections"),
+  modsInstall: (profileId: string, refs: string[]) => invoke<InstallReport>("mods_install", { profileId, refs }),
+  modsInstallCollection: (profileId: string, collectionId: string) =>
+    invoke<InstallReport>("mods_install_collection", { profileId, collectionId }),
+  modsSetEnabled: (profileId: string, projectId: string, enabled: boolean) =>
+    invoke<string[]>("mods_set_enabled", { profileId, projectId, enabled }),
+  modsRemove: (profileId: string, projectId: string) => invoke<string[]>("mods_remove", { profileId, projectId }),
+  modsCheckUpdates: (profileId: string) => invoke<UpdateCheck>("mods_check_updates", { profileId }),
+  modsUpdate: (profileId: string, selection: { project_id: string; version_id: string }[]) =>
+    invoke<InstallReport>("mods_update", { profileId, selection }),
 };
 
 export const events = {
   progress: (f: (p: Progress) => void): Promise<UnlistenFn> => listen<Progress>("launch-progress", (e) => f(e.payload)),
   log: (f: (l: LogLine) => void): Promise<UnlistenFn> => listen<LogLine>("game-log", (e) => f(e.payload)),
+  modsProgress: (f: (p: Progress) => void): Promise<UnlistenFn> => listen<Progress>("mods-progress", (e) => f(e.payload)),
   exit: (f: (x: GameExit) => void): Promise<UnlistenFn> => listen<GameExit>("game-exit", (e) => f(e.payload)),
 };
 

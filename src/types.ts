@@ -73,3 +73,76 @@ export const LOADERS: { id: Loader; label: string; supported: boolean }[] = [
   { id: "forge", label: "Forge (coming soon)", supported: false },
   { id: "neoforge", label: "NeoForge (coming soon)", supported: false },
 ];
+
+// ---- mods (Modrinth) ----
+export type Sort = "relevance" | "downloads" | "follows" | "newest" | "updated";
+
+export interface SearchHit {
+  project_id: string;
+  slug: string;
+  title: string;
+  description: string;
+  author: string;
+  downloads: number;
+  icon_url: string | null;
+  categories: string[];
+}
+export interface SearchResult {
+  hits: SearchHit[];
+  total_hits: number;
+}
+export interface ProjectDetail {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  body: string;
+  icon_url: string | null;
+  gallery: { url: string; title: string | null; featured: boolean }[];
+  downloads: number;
+  categories: string[];
+}
+export interface InstalledMod {
+  project_id: string;
+  version_id: string;
+  version_number: string;
+  title: string;
+  icon_url: string | null;
+  filename: string;
+  as_dependency: boolean;
+  enabled: boolean;
+  requires: string[];
+  incompatible: string[];
+}
+export interface ModsView {
+  managed: InstalledMod[];
+  unmanaged: string[];
+  orphans: string[];
+  conflicts: [string, string][];
+}
+export interface Collection {
+  id: string;
+  name: string;
+  description: string;
+  kind: "collection" | "category";
+  slugs: string[];
+}
+export interface Skipped {
+  project: string;
+  reason: string;
+}
+export interface InstallReport {
+  installed: string[];
+  skipped: Skipped[];
+}
+export interface UpdateInfo {
+  project_id: string;
+  title: string;
+  current: string;
+  latest_version_id: string;
+  latest_number: string;
+}
+export interface UpdateCheck {
+  updates: UpdateInfo[];
+  no_compatible: string[];
+}

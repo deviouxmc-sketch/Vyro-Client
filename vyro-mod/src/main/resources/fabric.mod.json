@@ -1,0 +1,19 @@
+{
+	"schemaVersion": 1,
+	"id": "vyro",
+	"version": "${version}",
+	"name": "VYRO Client",
+	"description": "VYRO in-game client features: customizable HUD, keystrokes, crosshair studio and PvP quality-of-life. Not an official Minecraft product.",
+	"authors": ["VYRO"],
+	"license": "MIT",
+	"environment": "client",
+	"entrypoints": {
+		"client": ["gg.vyro.client.VyroClient"]
+	},
+	"depends": {
+		"fabricloader": ">=0.20.1",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}

@@ -1,7 +1,8 @@
-export type Page = "home" | "profiles" | "accounts" | "settings";
+export type Page = "home" | "mods" | "profiles" | "accounts" | "settings";
 
 const ITEMS: { id: Page; label: string; icon: string }[] = [
   { id: "home", label: "Play", icon: "▶" },
+  { id: "mods", label: "Mods", icon: "✦" },
   { id: "profiles", label: "Profiles", icon: "◧" },
   { id: "accounts", label: "Accounts", icon: "◉" },
   { id: "settings", label: "Settings", icon: "⚙" },

@@ -7,13 +7,16 @@ use launcher_core::download::{Progress, ProgressFn};
 use launcher_core::install::Installer;
 use launcher_core::java::{self, JavaInstall};
 use launcher_core::launch::{self, LogFn, LogLine};
+use launcher_core::collections::{self, Collection};
 use launcher_core::loaders::{self, Loader};
+use launcher_core::modrinth::{self, Modrinth, Project, Request, SearchResult, Skipped, Sort, Target};
+use launcher_core::mods::{ModStore, ModsView};
 use launcher_core::paths::Dirs;
 use launcher_core::profile::{Profile, ProfileStore};
 use launcher_core::version::Manifest;
 use launcher_core::{Error, Result};
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -344,6 +347,202 @@ async fn launch_profile(app: AppHandle, state: St<'_>, profile_id: String) -> Re
     }
 }
 
+
+// ---------------------------------------------------------------- mods (Modrinth)
+
+fn profile_of(st: &AppState, id: &str) -> Result<Profile> {
+    st.profiles.list()?.into_iter().find(|p| p.id == id).ok_or_else(|| Error::msg("profile not found"))
+}
+fn not_running(st: &AppState, id: &str) -> Result<()> {
+    if st.running.lock().unwrap().contains(id) {
+        return Err(Error::msg("Close Minecraft before changing this profile's mods."));
+    }
+    Ok(())
+}
+fn modrinth(st: &AppState) -> Modrinth {
+    Modrinth::new(st.installer.dl.http().clone())
+}
+
+#[derive(Serialize)]
+struct InstallReport {
+    installed: Vec<String>,
+    skipped: Vec<Skipped>,
+}
+
+#[derive(Serialize)]
+struct UpdateInfo {
+    project_id: String,
+    title: String,
+    current: String,
+    latest_version_id: String,
+    latest_number: String,
+}
+
+#[derive(Serialize)]
+struct UpdateCheck {
+    updates: Vec<UpdateInfo>,
+    no_compatible: Vec<String>,
+}
+
+#[derive(Deserialize)]
+struct UpdateSel {
+    project_id: String,
+    version_id: String,
+}
+
+#[tauri::command]
+async fn mods_search(state: St<'_>, profile_id: String, query: String, sort: Sort, offset: u32) -> Result<SearchResult> {
+    let p = profile_of(&state, &profile_id)?;
+    let t = Target::for_loader(&p.mc_version, p.loader)?;
+    modrinth(&state).search(query.trim(), &t, sort, offset, 20).await
+}
+
+#[tauri::command]
+async fn mods_project(state: St<'_>, id: String) -> Result<Project> {
+    modrinth(&state).project(&id).await
+}
+
+#[tauri::command]
+fn mods_list(state: St<'_>, profile_id: String) -> Result<ModsView> {
+    let p = profile_of(&state, &profile_id)?;
+    ModStore::new(state.dirs.instance(&p.id)).view()
+}
+
+#[tauri::command]
+fn mods_collections() -> Vec<Collection> {
+    collections::ALL.to_vec()
+}
+
+/// Titles for ids *and* slugs, so reports read "Sodium" instead of "AANobbMI".
+async fn name_map(mr: &Modrinth, refs: &[String]) -> HashMap<String, Project> {
+    let mut out = HashMap::new();
+    if let Ok(list) = mr.projects(refs).await {
+        for pr in list {
+            out.insert(pr.slug.clone(), pr.clone());
+            out.insert(pr.id.clone(), pr);
+        }
+    }
+    out
+}
+
+async fn run_install(
+    app: &AppHandle,
+    st: &AppState,
+    p: &Profile,
+    requests: Vec<Request>,
+    keep_flags: bool,
+    installed_exclude: &HashSet<String>,
+) -> Result<InstallReport> {
+    let t = Target::for_loader(&p.mc_version, p.loader)?;
+    let mr = modrinth(st);
+    let store = ModStore::new(st.dirs.instance(&p.id));
+    let list = store.list()?;
+    let installed: HashSet<String> = list.iter().map(|m| m.project_id.clone()).filter(|id| !installed_exclude.contains(id)).collect();
+    let emit = |stage: &str| {
+        let _ = app.emit("mods-progress", Progress { stage: stage.into(), done: 0, total: 1 });
+    };
+
+    emit("Checking compatibility");
+    let mut plan = modrinth::resolve(&mr, &t, requests, &installed).await?;
+    if keep_flags {
+        let old: HashMap<&String, bool> = list.iter().map(|m| (&m.project_id, m.as_dependency)).collect();
+        for it in plan.install.iter_mut() {
+            if let Some(flag) = old.get(&it.version.project_id) {
+                it.as_dependency = *flag;
+            }
+        }
+    }
+
+    let mut refs: Vec<String> = plan.install.iter().map(|i| i.version.project_id.clone()).collect();
+    refs.extend(plan.skipped.iter().map(|s| s.project.clone()));
+    refs.sort();
+    refs.dedup();
+    let names = name_map(&mr, &refs).await;
+    let title = |r: &str| names.get(r).map(|p| p.title.clone()).unwrap_or_else(|| r.to_string());
+
+    if !plan.install.is_empty() {
+        emit(&format!("Downloading {} file(s)", plan.install.len()));
+        let meta: HashMap<String, (String, Option<String>)> =
+            names.values().map(|p| (p.id.clone(), (p.title.clone(), p.icon_url.clone()))).collect();
+        store.install(&st.installer.dl, &plan.install, &meta).await?;
+    }
+    Ok(InstallReport {
+        installed: plan
+            .install
+            .iter()
+            .map(|i| if i.as_dependency { format!("{} (dependency)", title(&i.version.project_id)) } else { title(&i.version.project_id) })
+            .collect(),
+        skipped: plan.skipped.iter().map(|s| Skipped { project: title(&s.project), reason: s.reason.clone() }).collect(),
+    })
+}
+
+#[tauri::command]
+async fn mods_install(app: AppHandle, state: St<'_>, profile_id: String, refs: Vec<String>) -> Result<InstallReport> {
+    let p = profile_of(&state, &profile_id)?;
+    not_running(&state, &p.id)?;
+    let reqs = refs.into_iter().map(Request::project).collect();
+    run_install(&app, &state, &p, reqs, false, &HashSet::new()).await
+}
+
+#[tauri::command]
+fn mods_set_enabled(state: St<'_>, profile_id: String, project_id: String, enabled: bool) -> Result<Vec<String>> {
+    let p = profile_of(&state, &profile_id)?;
+    not_running(&state, &p.id)?;
+    let store = ModStore::new(state.dirs.instance(&p.id));
+    let warn = if enabled { vec![] } else { store.dependents(&project_id)? };
+    store.set_enabled(&project_id, enabled)?;
+    Ok(warn) // names of enabled mods that need this one – shown as a warning
+}
+
+#[tauri::command]
+fn mods_remove(state: St<'_>, profile_id: String, project_id: String) -> Result<Vec<String>> {
+    let p = profile_of(&state, &profile_id)?;
+    not_running(&state, &p.id)?;
+    ModStore::new(state.dirs.instance(&p.id)).remove(&project_id)
+}
+
+#[tauri::command]
+async fn mods_check_updates(state: St<'_>, profile_id: String) -> Result<UpdateCheck> {
+    let p = profile_of(&state, &profile_id)?;
+    let t = Target::for_loader(&p.mc_version, p.loader)?;
+    let list = ModStore::new(state.dirs.instance(&p.id)).list()?;
+    let hashes: Vec<String> = list.iter().map(|m| m.sha1.clone()).collect();
+    let latest = modrinth(&state).latest_for_hashes(&hashes, &t).await?;
+    let mut out = UpdateCheck { updates: vec![], no_compatible: vec![] };
+    for m in &list {
+        match latest.get(&m.sha1) {
+            None => out.no_compatible.push(m.title.clone()),
+            Some(v) if v.id != m.version_id => out.updates.push(UpdateInfo {
+                project_id: m.project_id.clone(),
+                title: m.title.clone(),
+                current: m.version_number.clone(),
+                latest_version_id: v.id.clone(),
+                latest_number: v.version_number.clone(),
+            }),
+            Some(_) => {}
+        }
+    }
+    Ok(out)
+}
+
+#[tauri::command]
+async fn mods_update(app: AppHandle, state: St<'_>, profile_id: String, selection: Vec<UpdateSel>) -> Result<InstallReport> {
+    let p = profile_of(&state, &profile_id)?;
+    not_running(&state, &p.id)?;
+    let exclude: HashSet<String> = selection.iter().map(|s| s.project_id.clone()).collect();
+    let reqs = selection.into_iter().map(|s| Request { reference: s.project_id, pinned_version: Some(s.version_id) }).collect();
+    run_install(&app, &state, &p, reqs, true, &exclude).await
+}
+
+#[tauri::command]
+async fn mods_install_collection(app: AppHandle, state: St<'_>, profile_id: String, collection_id: String) -> Result<InstallReport> {
+    let c = collections::find(&collection_id).ok_or_else(|| Error::msg("unknown collection"))?;
+    let p = profile_of(&state, &profile_id)?;
+    not_running(&state, &p.id)?;
+    let reqs = c.slugs.iter().map(|s| Request::project(*s)).collect();
+    run_install(&app, &state, &p, reqs, false, &HashSet::new()).await
+}
+
 // ---------------------------------------------------------------- bootstrap
 
 fn main() {
@@ -386,6 +585,16 @@ fn main() {
             get_settings,
             save_settings,
             launch_profile,
+            mods_search,
+            mods_project,
+            mods_list,
+            mods_collections,
+            mods_install,
+            mods_set_enabled,
+            mods_remove,
+            mods_check_updates,
+            mods_update,
+            mods_install_collection,
         ])
         .run(tauri::generate_context!())
         .expect("error while running VYRO Client");

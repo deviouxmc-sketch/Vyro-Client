@@ -200,11 +200,20 @@ pub async fn minecraft_session(http: &reqwest::Client, ms_access_token: &str) ->
     let xsts: XstsResp = r.error_for_status().map_err(|e| Error::Auth(e.to_string()))?.json().await?;
     let uhs = xsts.claims.xui.first().map(|x| x.uhs.clone()).ok_or_else(|| Error::Auth("XSTS returned no user hash".into()))?;
 
-    let mc: McLoginResp = http
+    let mc_resp = http
         .post(MC_LOGIN_URL)
         .json(&json!({"identityToken": format!("XBL3.0 x={uhs};{}", xsts.token)}))
         .send()
-        .await?
+        .await?;
+    if mc_resp.status().as_u16() == 403 {
+        // Mojang rejects every Azure app that has not been approved for Minecraft services.
+        return Err(Error::Auth(
+            "Mojang has not approved this app registration for Minecraft sign-in yet (HTTP 403). \
+             Submit the client ID at aka.ms/mce-reviewappid and try again once it is approved."
+                .into(),
+        ));
+    }
+    let mc: McLoginResp = mc_resp
         .error_for_status()
         .map_err(|e| Error::Auth(format!("Minecraft sign-in failed: {e}")))?
         .json()

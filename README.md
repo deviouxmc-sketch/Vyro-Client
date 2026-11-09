@@ -1,7 +1,7 @@
 # VYRO CLIENT
 
 A standalone Minecraft: Java Edition launcher (Tauri 2 + Rust + React/TypeScript).
-**Status: Stage 1 – launcher foundation.** Not an official Minecraft product; not affiliated with Mojang or Microsoft.
+**Status: Stage 3 (first draft) – launcher + Modrinth mod manager + in-game Fabric mod (`vyro-mod/`).** Not an official Minecraft product; not affiliated with Mojang or Microsoft.
 
 ## Layout
 
@@ -11,6 +11,7 @@ A standalone Minecraft: Java Edition launcher (Tauri 2 + Rust + React/TypeScript
 | `src-tauri` | Thin desktop shell: commands, OS keychain storage, events to the UI |
 | `src` | React UI: Play, Profiles, Accounts, Settings |
 | `public/logo.svg` | VYRO logo |
+| `vyro-mod` | Fabric mod for Minecraft 1.21.11: HUD, editor, crosshair, zoom, menu. See `vyro-mod/README.md` – **never compiled against real Minecraft yet** |
 
 Launcher and game stay separated: the launcher only builds a command line and spawns the JVM. In-game features (HUD etc.) will live in a separate Java/Fabric mod (Stage 3).
 
@@ -18,7 +19,9 @@ Launcher and game stay separated: the launcher only builds a command line and sp
 
 | Area | State |
 |---|---|
-| Rule evaluation, version inheritance (Fabric/Quilt), libraries, legacy + modern natives, asset planning, launch-argument building (modern + legacy), Java parsing/selection, profile + account stores, auth response parsing | **Unit-tested** (`cargo test -p launcher-core`, 34 tests) |
+| Modrinth dependency resolver (required deps, incompatibilities, release-over-beta, cycles, pinned versions), mod registry (enable/disable/remove/orphans/conflicts/unsafe filenames/foreign URLs) | **Unit-tested** with a fake Modrinth source |
+| Live Modrinth requests (search, versions, update check) and real downloads | **Not tested** – the build sandbox cannot reach api.modrinth.com |
+| Rule evaluation, version inheritance (Fabric/Quilt), libraries, legacy + modern natives, asset planning, launch-argument building (modern + legacy), Java parsing/selection, profile + account stores, auth response parsing | **Unit-tested** (`cargo test -p launcher-core`, 49 tests) |
 | Installer end-to-end against a pre-seeded cache, process spawn + log streaming | **Tested offline** |
 | Tauri shell | **Compiles** (`cargo check`), never run here (no display) |
 | React UI | **Type-checks and builds**, never seen rendered here |
@@ -53,9 +56,16 @@ Deleting a profile keeps its game folder on disk so worlds are never lost by acc
 
 ## Roadmap
 
-1. **Stage 1 (this)** – auth, install/launch, profiles, main UI.
-2. **Stage 2** – Modrinth mod manager (search, filters, dependency resolution, compatibility checks, enable/disable, updates), mod collections, Forge/NeoForge.
-3. **Stage 3** – `vyro-mod` (Fabric, Java): in-game HUD, keystrokes/CPS, crosshair; HUD Studio editor in the launcher writing a JSON layout the mod reads.
+1. **Stage 1** – auth, install/launch, profiles, main UI.
+2. **Stage 2 (this)** – Modrinth mod manager: search/sort, Minecraft-version + loader filtering, one-click and multi-select install with automatic required dependencies, compatibility checks, enable/disable, uninstall, update check, conflict + unused-dependency detection, curated collections. Still to do: Forge/NeoForge, screenshots-only detail view is basic (no Markdown rendering).
+3. **Stage 3 (draft written)** – `vyro-mod` (Fabric, Java): in-game HUD, keystrokes/CPS, crosshair; HUD Studio editor in the launcher writing a JSON layout the mod reads.
 4. **Stage 4** – hardware detection + presets, Performance Center (frame-time reports from the mod), crash viewer, resource packs/shaders, modpack import/export, auto-update.
 
 Not yet built: news/announcements feed (needs a backend), anything listed in stages 2–4.
+
+## Mod manager notes
+
+- Mods are installed per profile into `instances/<profile>/mods` and tracked in `vyro-mods.json` next to it. Jars you add by hand are listed as "not installed by VYRO" and never touched.
+- Downloads are accepted only from `cdn.modrinth.com`, verified against Modrinth's SHA-1, and file names are validated before anything is written.
+- Collections use Modrinth slugs resolved at install time; ones that were renamed or don't support the profile's Minecraft version are reported as skipped, not silently dropped.
+- Disabling renames `x.jar` to `x.jar.disabled`. Changing mods is blocked while the profile's game is running.
