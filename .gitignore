@@ -4,3 +4,5 @@ target/
 src-tauri/target/
 src-tauri/gen/
 *.part
+src-tauri/resources/*.jar
+src-tauri/resources/*.version

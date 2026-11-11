@@ -146,3 +146,10 @@ export interface UpdateCheck {
   updates: UpdateInfo[];
   no_compatible: string[];
 }
+
+export interface VyroModStatus {
+  bundled: boolean;
+  bundled_version: string;
+  installed: string | null;
+  supported: boolean;
+}

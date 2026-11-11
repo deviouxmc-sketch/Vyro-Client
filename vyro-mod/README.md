@@ -35,18 +35,19 @@ javac -d /tmp/sc src/main/java/gg/vyro/core/*.java tools/SelfCheck.java && java 
 | HUD editor | Drag to move, corner handle / mouse wheel to resize, snap to centre lines, per-element opacity, text/background colour, panel/shadow/aura toggles, reset, live preview with sample data |
 | Presets | Save the current layout + crosshair as a preset, load or delete later (`config/vyro/presets/`) |
 | Crosshair | cross, plus, dot, circle, square; size, thickness, gap, colour, outline, opacity, aura colour cycle |
-| Zoom | Hold **C** (rebindable). Implemented by temporarily lowering the FOV option, so the minimum is vanilla's 30 and there is no smoothing |
+| Zoom | **C** (rebindable), hold or toggle mode. Smooth FOV zoom 1.5x-10x, mouse wheel changes magnification while zoomed, slower mouse look while zoomed, on/off switch in the menu |
+| Freelook | **Left Alt** (rebindable), hold or toggle mode. Look around without turning the player, in third person by default (hand and crosshair are hidden meanwhile); the camera eases back when released; on/off switch in the menu |
+| View tweaks | No damage camera tilt, hide or lower the fire overlay, no pumpkin overlay |
 | Toggle sprint / sneak | Sprint: menu toggle or keybind. Sneak: latch keybind |
 | Hit sound | ding / arrow / levelup / anvil, volume slider |
 | Vanilla HUD tweaks | Scale and offset for hotbar group (hotbar, health, food, XP, ...), scoreboard and boss bar |
-| Menu | **Right Shift** (rebindable). Aura glow, animated accent, tabs, scrolling |
+| Menu | **Right Shift** (rebindable). Card grid of every module (HUD / MECHANIC / VISUAL chips, search), an OPTIONS page and enable bar per module, a profile sidebar (saved HUD layouts), and the HUD editor one click away |
 
 Config lives in `.minecraft/config/vyro/config.json` (a broken file is moved aside, never crashes the game).
 
 ## Not done yet (needs mixins, which need to be checked against real 1.21.11 code)
 
-Freelook / perspective, hit colour, damage tilt, old/sword-block/bow/rod animations, low fire, no pumpkin overlay,
-motion blur, scoreboard/boss-bar *appearance* (only position/scale so far), status-effect icons, item decorations.
+Hit colour (needs the overlay texture), old/sword-block/bow/rod animations, motion blur, scoreboard/boss-bar *appearance* (only position/scale so far), status-effect icons, item decorations.
 Maps (minimap, waypoints, death point, cave map), light-level overlay, chunk borders and structure boxes are better
 served by existing mods (Xaero's etc.), which the launcher already installs.
 
@@ -54,3 +55,11 @@ served by existing mods (Xaero's etc.), which the launcher already installs.
 
 Everything here is client-side display or input convenience. Entity radar and similar information advantages were
 deliberately left out because many servers ban them.
+
+## Mixins
+
+`src/client/java/gg/vyro/client/mixin/` hits only members whose names were read from the real 1.21.11 jar
+(`tools/dump-signatures.sh`): `Camera.setup`/`setRotation`, `Entity.turn`, `GameRenderer.getFov`/`bobHurt`,
+`Gui.renderTextureOverlay`, `ScreenEffectRenderer.renderFire`. The mixin config uses `defaultRequire: 0`, so a target that
+changes in a future version is skipped (logged) instead of crashing the game. Freelook only takes over mouse input after the
+camera hook has actually run, so a failed hook can never freeze your view.

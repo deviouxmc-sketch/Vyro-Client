@@ -1,0 +1,16 @@
+{
+	"required": false,
+	"minVersion": "0.8",
+	"package": "gg.vyro.client.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"CameraMixin",
+		"EntityMixin",
+		"GameRendererMixin",
+		"GuiMixin",
+		"ScreenEffectRendererMixin"
+	],
+	"injectors": {
+		"defaultRequire": 0
+	}
+}

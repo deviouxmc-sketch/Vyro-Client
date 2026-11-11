@@ -7,6 +7,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
+/// Registry id used for VYRO's own in-game mod (it is not a Modrinth project).
+pub const VYRO_MOD_ID: &str = "vyro-client-mod";
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct InstalledMod {
     pub project_id: String,

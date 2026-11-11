@@ -55,4 +55,37 @@ public final class Theme {
     public static boolean inside(double mx, double my, int x, int y, int w, int h) {
         return mx >= x && mx < x + w && my >= y && my < y + h;
     }
+
+    /** The VYRO "V" mark drawn with row fills (matches public/logo.svg). */
+    public static void logo(GuiGraphics g, int x, int y, int size) {
+        float k = size / 128f;
+        for (int row = 0; row < size; row++) {
+            float yy = row / k;
+            if (yy < 26f || yy > 104f) continue;
+            float t = (yy - 26f) / 78f;
+            float outerL = 20f + t * 32f;
+            float outerR = 108f - t * 32f;
+            int color = Colors.lerp(Colors.PURPLE, Colors.BLUE, t);
+            int ry = y + row;
+            if (yy <= 66f) {
+                float innerL = 46f + (yy - 26f) * 18f / 40f;
+                float innerR = 82f - (yy - 26f) * 18f / 40f;
+                g.fill(x + Math.round(outerL * k), ry, x + Math.round(innerL * k), ry + 1, color);
+                g.fill(x + Math.round(innerR * k), ry, x + Math.round(outerR * k), ry + 1, color);
+            } else {
+                g.fill(x + Math.round(outerL * k), ry, x + Math.round(outerR * k), ry + 1, color);
+            }
+            if (yy >= 78f) { // cyan notch at the tip
+                float half = (yy - 78f) / 26f * 12f;
+                g.fill(x + Math.round((64f - half) * k), ry, x + Math.round((64f + half) * k), ry + 1, Colors.CYAN);
+            }
+        }
+    }
+
+    /** Cut text to fit {@code maxW} pixels, adding an ellipsis. */
+    public static String fit(String s, int maxW) {
+        if (textWidth(s) <= maxW) return s;
+        while (s.length() > 1 && textWidth(s + "...") > maxW) s = s.substring(0, s.length() - 1);
+        return s + "...";
+    }
 }

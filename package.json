@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "sync-mod": "bash scripts/sync-mod.sh"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

@@ -10,7 +10,7 @@ use launcher_core::launch::{self, LogFn, LogLine};
 use launcher_core::collections::{self, Collection};
 use launcher_core::loaders::{self, Loader};
 use launcher_core::modrinth::{self, Modrinth, Project, Request, SearchResult, Skipped, Sort, Target};
-use launcher_core::mods::{ModStore, ModsView};
+use launcher_core::mods::{InstalledMod, ModStore, ModsView, VYRO_MOD_ID};
 use launcher_core::paths::Dirs;
 use launcher_core::profile::{Profile, ProfileStore};
 use launcher_core::version::Manifest;
@@ -505,7 +505,7 @@ fn mods_remove(state: St<'_>, profile_id: String, project_id: String) -> Result<
 async fn mods_check_updates(state: St<'_>, profile_id: String) -> Result<UpdateCheck> {
     let p = profile_of(&state, &profile_id)?;
     let t = Target::for_loader(&p.mc_version, p.loader)?;
-    let list = ModStore::new(state.dirs.instance(&p.id)).list()?;
+    let list: Vec<InstalledMod> = ModStore::new(state.dirs.instance(&p.id)).list()?.into_iter().filter(|m| m.project_id != VYRO_MOD_ID).collect();
     let hashes: Vec<String> = list.iter().map(|m| m.sha1.clone()).collect();
     let latest = modrinth(&state).latest_for_hashes(&hashes, &t).await?;
     let mut out = UpdateCheck { updates: vec![], no_compatible: vec![] };
@@ -541,6 +541,80 @@ async fn mods_install_collection(app: AppHandle, state: St<'_>, profile_id: Stri
     not_running(&state, &p.id)?;
     let reqs = c.slugs.iter().map(|s| Request::project(*s)).collect();
     run_install(&app, &state, &p, reqs, false, &HashSet::new()).await
+}
+
+
+// ---------------------------------------------------------------- VYRO in-game mod
+
+/// The mod jar embedded at build time (empty when `npm run sync-mod` has not been run).
+const VYRO_MOD_JAR: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/vyro-client-mod.jar"));
+const VYRO_MOD_VERSION: &str = env!("VYRO_MOD_VERSION");
+const VYRO_MOD_FILE: &str = "vyro-client-mod.jar";
+
+#[derive(Serialize)]
+struct VyroModStatus {
+    /// The launcher binary contains a mod jar.
+    bundled: bool,
+    bundled_version: String,
+    /// Version currently installed in this profile, if any.
+    installed: Option<String>,
+    /// Fabric/Quilt profiles only.
+    supported: bool,
+}
+
+#[tauri::command]
+fn vyro_mod_status(state: St<'_>, profile_id: String) -> Result<VyroModStatus> {
+    let p = profile_of(&state, &profile_id)?;
+    let installed = ModStore::new(state.dirs.instance(&p.id))
+        .list()?
+        .into_iter()
+        .find(|m| m.project_id == VYRO_MOD_ID)
+        .map(|m| m.version_number);
+    Ok(VyroModStatus {
+        bundled: !VYRO_MOD_JAR.is_empty(),
+        bundled_version: VYRO_MOD_VERSION.to_string(),
+        installed,
+        supported: matches!(p.loader, Loader::Fabric | Loader::Quilt),
+    })
+}
+
+#[tauri::command]
+async fn vyro_mod_install(app: AppHandle, state: St<'_>, profile_id: String) -> Result<InstallReport> {
+    let p = profile_of(&state, &profile_id)?;
+    not_running(&state, &p.id)?;
+    if VYRO_MOD_JAR.is_empty() {
+        return Err(Error::msg("This build of the launcher does not contain the VYRO mod. Run `npm run sync-mod` and rebuild."));
+    }
+    if !matches!(p.loader, Loader::Fabric | Loader::Quilt) {
+        return Err(Error::msg("The VYRO mod needs a Fabric or Quilt profile."));
+    }
+    // The mod needs Fabric API; reuse the normal resolver so versions are checked for this profile.
+    let report = run_install(&app, &state, &p, vec![Request::project("fabric-api")], false, &HashSet::new()).await?;
+
+    let store = ModStore::new(state.dirs.instance(&p.id));
+    let mods_dir = store.mods_dir();
+    std::fs::create_dir_all(&mods_dir)?;
+    let dest = mods_dir.join(VYRO_MOD_FILE);
+    let tmp = mods_dir.join(format!("{VYRO_MOD_FILE}.part"));
+    std::fs::write(&tmp, VYRO_MOD_JAR)?;
+    std::fs::rename(&tmp, &dest)?;
+    let sha1 = launcher_core::download::file_sha1(&dest)?;
+    store.commit(vec![InstalledMod {
+        project_id: VYRO_MOD_ID.to_string(),
+        version_id: format!("local-{VYRO_MOD_VERSION}"),
+        version_number: VYRO_MOD_VERSION.to_string(),
+        title: "VYRO Client".to_string(),
+        icon_url: None,
+        filename: VYRO_MOD_FILE.to_string(),
+        sha1,
+        as_dependency: false,
+        enabled: true,
+        requires: vec![],
+        incompatible: vec![],
+    }])?;
+    let mut installed = report.installed;
+    installed.push(format!("VYRO Client {VYRO_MOD_VERSION}"));
+    Ok(InstallReport { installed, skipped: report.skipped.into_iter().filter(|s| s.reason != "already installed").collect() })
 }
 
 // ---------------------------------------------------------------- bootstrap
@@ -595,6 +669,8 @@ fn main() {
             mods_check_updates,
             mods_update,
             mods_install_collection,
+            vyro_mod_status,
+            vyro_mod_install,
         ])
         .run(tauri::generate_context!())
         .expect("error while running VYRO Client");

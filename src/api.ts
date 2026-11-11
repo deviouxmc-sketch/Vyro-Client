@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import type {
   AccountList, AccountMeta, Collection, DeviceCode, GameExit, InstallReport, JavaInstall, LogLine, McVersion,
-  ModsView, Profile, Progress, ProjectDetail, SearchResult, Settings, Sort, SystemInfo, UpdateCheck,
+  ModsView, Profile, Progress, ProjectDetail, SearchResult, Settings, Sort, SystemInfo, UpdateCheck, VyroModStatus,
 } from "./types";
 
 // Every function below maps 1:1 to a #[tauri::command] in src-tauri/src/main.rs.
@@ -37,6 +37,8 @@ export const api = {
     invoke<string[]>("mods_set_enabled", { profileId, projectId, enabled }),
   modsRemove: (profileId: string, projectId: string) => invoke<string[]>("mods_remove", { profileId, projectId }),
   modsCheckUpdates: (profileId: string) => invoke<UpdateCheck>("mods_check_updates", { profileId }),
+  vyroModStatus: (profileId: string) => invoke<VyroModStatus>("vyro_mod_status", { profileId }),
+  vyroModInstall: (profileId: string) => invoke<InstallReport>("vyro_mod_install", { profileId }),
   modsUpdate: (profileId: string, selection: { project_id: string; version_id: string }[]) =>
     invoke<InstallReport>("mods_update", { profileId, selection }),
 };

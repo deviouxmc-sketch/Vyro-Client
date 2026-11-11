@@ -37,9 +37,16 @@ public class HudEditorScreen extends Screen {
     private boolean guideX, guideY;
     private int propX, propY, propW, propH;
 
+    private HudWidget initial;
+
     public HudEditorScreen(Screen parent) {
         super(Component.literal("VYRO HUD Editor"));
         this.parent = parent;
+    }
+
+    public HudEditorScreen(Screen parent, HudWidget select) {
+        this(parent);
+        this.initial = select;
     }
 
     @Override
@@ -48,6 +55,12 @@ public class HudEditorScreen extends Screen {
         propH = 118;
         propX = (width - propW) / 2;
         propY = height - propH - 8;
+        if (initial != null) {
+            ElementConfig ic = cfg().elements.get(initial.id);
+            if (ic != null) ic.enabled = true;
+            selected = initial;
+            initial = null;
+        }
         rebuildPalette();
         rebuildProps();
     }

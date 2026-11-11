@@ -5,6 +5,7 @@ import gg.vyro.client.config.ElementConfig;
 import gg.vyro.client.config.FeatureConfig;
 import gg.vyro.client.config.VyroConfig;
 import gg.vyro.client.features.CrosshairRenderer;
+import gg.vyro.client.features.Freelook;
 import gg.vyro.client.ui.Theme;
 import gg.vyro.core.Colors;
 import gg.vyro.core.Geometry;
@@ -45,6 +46,7 @@ public final class HudManager {
         HudElementRegistry.replaceElement(VanillaHudElements.SCOREBOARD, orig -> (g, dt) -> scoreboard(g, dt, orig));
         HudElementRegistry.replaceElement(VanillaHudElements.BOSS_BAR, orig -> (g, dt) -> bossBar(g, dt, orig));
         HudElementRegistry.replaceElement(VanillaHudElements.CROSSHAIR, orig -> (g, dt) -> {
+            if (Freelook.requested() || Freelook.returning()) return; // the aim point means nothing while freelooking
             if (VyroConfig.get().crosshair.enabled) CrosshairRenderer.render(g);
             else orig.render(g, dt);
         });

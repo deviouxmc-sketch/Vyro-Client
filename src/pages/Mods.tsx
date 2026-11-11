@@ -4,7 +4,7 @@ import { api, errText, events } from "../api";
 import { Page } from "../components/Sidebar";
 import { useStore } from "../store";
 import type {
-  Collection, InstallReport, ModsView, ProjectDetail, SearchHit, Sort, UpdateCheck,
+  Collection, InstallReport, ModsView, ProjectDetail, SearchHit, Sort, UpdateCheck, VyroModStatus,
 } from "../types";
 
 type Tab = "browse" | "installed" | "collections";
@@ -94,6 +94,7 @@ export function Mods({ go }: { go: (p: Page) => void }) {
   const [detail, setDetail] = useState<string | null>(null);
   const [updates, setUpdates] = useState<UpdateCheck | null>(null);
   const [confirmRm, setConfirmRm] = useState<string | null>(null);
+  const [vyro, setVyro] = useState<VyroModStatus | null>(null);
   const reqId = useRef(0);
 
   const supported = !!p && p.loader !== "vanilla";
@@ -101,7 +102,10 @@ export function Mods({ go }: { go: (p: Page) => void }) {
 
   const loadInstalled = useCallback(async () => {
     if (!p) return;
-    try { setView(await api.modsList(p.id)); } catch (e) { s.toast(errText(e), "error"); }
+    try {
+      setView(await api.modsList(p.id));
+      setVyro(await api.vyroModStatus(p.id));
+    } catch (e) { s.toast(errText(e), "error"); }
   }, [p, s]);
 
   useEffect(() => { void loadInstalled(); setUpdates(null); setPicked(new Set()); /* eslint-disable-next-line */ }, [p?.id, p?.mc_version, p?.loader]);
@@ -166,6 +170,25 @@ export function Mods({ go }: { go: (p: Page) => void }) {
         </div>
       ) : (
         <>
+          {vyro && vyro.supported && (
+            <div className="panel vyro-banner">
+              <div className="grow">
+                <div className="strong">VYRO in-game mod {vyro.installed ? <span className="chip tiny">v{vyro.installed}</span> : null}</div>
+                <div className="muted small">
+                  {!vyro.bundled
+                    ? "Not included in this build of the launcher. Run `npm run sync-mod`, then restart the launcher."
+                    : "Customizable HUD, keystrokes, crosshair studio, zoom and the VYRO menu (Right Shift in game). Installs Fabric API too."}
+                </div>
+              </div>
+              {vyro.bundled && (!vyro.installed || vyro.installed !== vyro.bundled_version) && (
+                <button className="btn primary small" disabled={!!busy}
+                  onClick={() => void run(vyro.installed ? "Updating VYRO mod" : "Installing VYRO mod", () => api.vyroModInstall(p.id))}>
+                  {vyro.installed ? `Update to v${vyro.bundled_version}` : "Install VYRO mod"}
+                </button>
+              )}
+              {vyro.installed && vyro.installed === vyro.bundled_version && <span className="chip accent">Up to date</span>}
+            </div>
+          )}
           <div className="tabs">
             {(["browse", "installed", "collections"] as Tab[]).map((t) => (
               <button key={t} className={tab === t ? "tab active" : "tab"} onClick={() => setTab(t)}>

@@ -69,3 +69,10 @@ Not yet built: news/announcements feed (needs a backend), anything listed in sta
 - Downloads are accepted only from `cdn.modrinth.com`, verified against Modrinth's SHA-1, and file names are validated before anything is written.
 - Collections use Modrinth slugs resolved at install time; ones that were renamed or don't support the profile's Minecraft version are reported as skipped, not silently dropped.
 - Disabling renames `x.jar` to `x.jar.disabled`. Changing mods is blocked while the profile's game is running.
+
+## Getting the VYRO mod into profiles
+
+1. Build and embed the mod (needs Java 25 on PATH for the Gradle build): `npm run sync-mod`
+2. Restart `npm run tauri dev` (this recompiles the launcher with the jar embedded).
+3. Mods tab -> "Install VYRO mod". It installs Fabric API (version-checked for the profile) and the mod jar, and the
+   banner offers an update when the launcher carries a newer mod version.

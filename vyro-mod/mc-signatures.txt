@@ -1,0 +1,221 @@
+== net.minecraft.client.MouseHandler
+public class net.minecraft.client.MouseHandler {
+  private double accumulatedDX;
+  private double accumulatedDY;
+  private void onMove(long, double, double);
+  public void handleAccumulatedMovement();
+  private void turnPlayer(double);
+== net.minecraft.client.Camera
+public class net.minecraft.client.Camera implements net.minecraft.world.waypoints.TrackedWaypoint$Camera {
+  private float xRot;
+  private float yRot;
+  private final org.joml.Quaternionf rotation;
+  private boolean detached;
+  public void setup(net.minecraft.world.level.Level, net.minecraft.world.entity.Entity, boolean, boolean, float);
+  protected void setRotation(float, float);
+  protected void setPosition(double, double, double);
+  protected void setPosition(net.minecraft.world.phys.Vec3);
+  public float xRot();
+  public float yRot();
+  public org.joml.Quaternionf rotation();
+== net.minecraft.client.renderer.ScreenEffectRenderer
+Compiled from "ScreenEffectRenderer.java"
+public class net.minecraft.client.renderer.ScreenEffectRenderer {
+  private static final net.minecraft.resources.Identifier UNDERWATER_LOCATION;
+  private final net.minecraft.client.Minecraft minecraft;
+  private final net.minecraft.client.resources.model.MaterialSet materials;
+  private final net.minecraft.client.renderer.MultiBufferSource bufferSource;
+  public static final int ITEM_ACTIVATION_ANIMATION_LENGTH;
+  private net.minecraft.world.item.ItemStack itemActivationItem;
+  private int itemActivationTicks;
+  private float itemActivationOffX;
+  private float itemActivationOffY;
+  public net.minecraft.client.renderer.ScreenEffectRenderer(net.minecraft.client.Minecraft, net.minecraft.client.resources.model.MaterialSet, net.minecraft.client.renderer.MultiBufferSource);
+  public void tick();
+  public void renderScreenEffect(boolean, float, net.minecraft.client.renderer.SubmitNodeCollector);
+  private void renderItemActivationAnimation(com.mojang.blaze3d.vertex.PoseStack, float, net.minecraft.client.renderer.SubmitNodeCollector);
+  public void resetItemActivation();
+  public void displayItemActivation(net.minecraft.world.item.ItemStack, net.minecraft.util.RandomSource);
+  private static net.minecraft.world.level.block.state.BlockState getViewBlockingState(net.minecraft.world.entity.player.Player);
+  private static void renderTex(net.minecraft.client.renderer.texture.TextureAtlasSprite, com.mojang.blaze3d.vertex.PoseStack, net.minecraft.client.renderer.MultiBufferSource);
+  private static void renderWater(net.minecraft.client.Minecraft, com.mojang.blaze3d.vertex.PoseStack, net.minecraft.client.renderer.MultiBufferSource);
+  private static void renderFire(com.mojang.blaze3d.vertex.PoseStack, net.minecraft.client.renderer.MultiBufferSource, net.minecraft.client.renderer.texture.TextureAtlasSprite);
+  static {};
+}
+== net.minecraft.client.gui.Gui
+public class net.minecraft.client.gui.Gui {
+  private static final java.util.Comparator<net.minecraft.world.scores.PlayerScoreEntry> SCORE_DISPLAY_ORDER;
+  private net.minecraft.network.chat.Component overlayMessageString;
+  private int overlayMessageTime;
+  private boolean animateOverlayMessageColor;
+  private boolean chatDisabledByPlayerShown;
+  public float vignetteBrightness;
+  private final net.minecraft.client.gui.components.DebugScreenOverlay debugOverlay;
+  private final net.minecraft.client.gui.components.SubtitleOverlay subtitleOverlay;
+  private final net.minecraft.client.gui.components.PlayerTabOverlay tabList;
+  private final net.minecraft.client.gui.components.BossHealthOverlay bossOverlay;
+  public void render(net.minecraft.client.gui.GuiGraphics, net.minecraft.client.DeltaTracker);
+  private void renderBossOverlay(net.minecraft.client.gui.GuiGraphics, net.minecraft.client.DeltaTracker);
+  public void renderDebugOverlay(net.minecraft.client.gui.GuiGraphics);
+  private void renderSubtitleOverlay(net.minecraft.client.gui.GuiGraphics, boolean);
+  public void renderDeferredSubtitles();
+  private void renderCameraOverlays(net.minecraft.client.gui.GuiGraphics, net.minecraft.client.DeltaTracker);
+  private void renderSleepOverlay(net.minecraft.client.gui.GuiGraphics, net.minecraft.client.DeltaTracker);
+  private void renderOverlayMessage(net.minecraft.client.gui.GuiGraphics, net.minecraft.client.DeltaTracker);
+  private void renderTitle(net.minecraft.client.gui.GuiGraphics, net.minecraft.client.DeltaTracker);
+  private void renderChat(net.minecraft.client.gui.GuiGraphics, net.minecraft.client.DeltaTracker);
+  private void renderScoreboardSidebar(net.minecraft.client.gui.GuiGraphics, net.minecraft.client.DeltaTracker);
+  private void renderTabList(net.minecraft.client.gui.GuiGraphics, net.minecraft.client.DeltaTracker);
+  private void renderCrosshair(net.minecraft.client.gui.GuiGraphics, net.minecraft.client.DeltaTracker);
+  private void renderEffects(net.minecraft.client.gui.GuiGraphics, net.minecraft.client.DeltaTracker);
+  private void renderHotbarAndDecorations(net.minecraft.client.gui.GuiGraphics, net.minecraft.client.DeltaTracker);
+  private void renderItemHotbar(net.minecraft.client.gui.GuiGraphics, net.minecraft.client.DeltaTracker);
+  private void renderSelectedItemName(net.minecraft.client.gui.GuiGraphics);
+  private void renderDemoOverlay(net.minecraft.client.gui.GuiGraphics, net.minecraft.client.DeltaTracker);
+  private net.minecraft.world.entity.player.Player getCameraPlayer();
+  private net.minecraft.world.entity.LivingEntity getPlayerVehicleWithHealth();
+  private void renderPlayerHealth(net.minecraft.client.gui.GuiGraphics);
+  private static void renderArmor(net.minecraft.client.gui.GuiGraphics, net.minecraft.world.entity.player.Player, int, int, int, int);
+  private void renderHearts(net.minecraft.client.gui.GuiGraphics, net.minecraft.world.entity.player.Player, int, int, int, int, float, int, int, int, boolean);
+  private void renderHeart(net.minecraft.client.gui.GuiGraphics, net.minecraft.client.gui.Gui$HeartType, int, int, boolean, boolean, boolean);
+  private void renderAirBubbles(net.minecraft.client.gui.GuiGraphics, net.minecraft.world.entity.player.Player, int, int, int);
+  private void playAirBubblePoppedSound(int, net.minecraft.world.entity.player.Player, int);
+  private void renderFood(net.minecraft.client.gui.GuiGraphics, net.minecraft.world.entity.player.Player, int, int);
+  private void renderVehicleHealth(net.minecraft.client.gui.GuiGraphics);
+  private void renderTextureOverlay(net.minecraft.client.gui.GuiGraphics, net.minecraft.resources.Identifier, float);
+  private void renderSpyglassOverlay(net.minecraft.client.gui.GuiGraphics, float);
+  private void updateVignetteBrightness(net.minecraft.world.entity.Entity);
+  private void renderVignette(net.minecraft.client.gui.GuiGraphics, net.minecraft.world.entity.Entity);
+  private void renderPortalOverlay(net.minecraft.client.gui.GuiGraphics, float);
+  private void renderConfusionOverlay(net.minecraft.client.gui.GuiGraphics, float);
+== net.minecraft.world.entity.Entity
+public abstract class net.minecraft.world.entity.Entity implements net.minecraft.network.syncher.SyncedDataHolder,net.minecraft.util.debug.DebugValueSource,net.minecraft.world.Nameable,net.minecraft.world.entity.ItemOwner,net.minecraft.world.entity.SlotProvider,net.minecraft.world.level.entity.EntityAccess,net.minecraft.world.scores.ScoreHolder,net.minecraft.core.component.DataComponentGetter {
+  public void turn(double, double);
+  public float getViewXRot(float);
+  public float getViewYRot(float);
+  public float getXRot(float);
+  public float getYRot(float);
+  public float getYRot();
+  public void setYRot(float);
+  public float getXRot();
+  public void setXRot(float);
+== net.minecraft.client.renderer.entity.LivingEntityRenderer
+public abstract class net.minecraft.client.renderer.entity.LivingEntityRenderer<T extends net.minecraft.world.entity.LivingEntity, S extends net.minecraft.client.renderer.entity.state.LivingEntityRenderState, M extends net.minecraft.client.model.EntityModel<? super S>> extends net.minecraft.client.renderer.entity.EntityRenderer<T, S> implements net.minecraft.client.renderer.entity.RenderLayerParent<S, M> {
+  protected final net.minecraft.client.renderer.item.ItemModelResolver itemModelResolver;
+  protected final java.util.List<net.minecraft.client.renderer.entity.layers.RenderLayer<S, M>> layers;
+  public net.minecraft.client.renderer.entity.LivingEntityRenderer(net.minecraft.client.renderer.entity.EntityRendererProvider$Context, M, float);
+  protected final boolean addLayer(net.minecraft.client.renderer.entity.layers.RenderLayer<S, M>);
+  public void submit(S, com.mojang.blaze3d.vertex.PoseStack, net.minecraft.client.renderer.SubmitNodeCollector, net.minecraft.client.renderer.state.CameraRenderState);
+  protected net.minecraft.client.renderer.rendertype.RenderType getRenderType(S, boolean, boolean, boolean);
+  public static int getOverlayCoords(net.minecraft.client.renderer.entity.state.LivingEntityRenderState, float);
+  protected boolean isBodyVisible(S);
+  protected float getWhiteOverlayProgress(S);
+  public void extractRenderState(net.minecraft.world.entity.Entity, net.minecraft.client.renderer.entity.state.EntityRenderState, float);
+  protected float getShadowRadius(net.minecraft.client.renderer.entity.state.EntityRenderState);
+  public void submit(net.minecraft.client.renderer.entity.state.EntityRenderState, com.mojang.blaze3d.vertex.PoseStack, net.minecraft.client.renderer.SubmitNodeCollector, net.minecraft.client.renderer.state.CameraRenderState);
+== net.minecraft.client.renderer.ItemInHandRenderer
+public class net.minecraft.client.renderer.ItemInHandRenderer {
+  private void applyItemArmAttackTransform(com.mojang.blaze3d.vertex.PoseStack, net.minecraft.world.entity.HumanoidArm, float);
+  private void applyItemArmTransform(com.mojang.blaze3d.vertex.PoseStack, net.minecraft.world.entity.HumanoidArm, float);
+  private static net.minecraft.client.renderer.ItemInHandRenderer$HandRenderSelection selectionUsingItemWhileHoldingBowLike(net.minecraft.client.player.LocalPlayer);
+  private void renderArmWithItem(net.minecraft.client.player.AbstractClientPlayer, float, float, net.minecraft.world.InteractionHand, float, net.minecraft.world.item.ItemStack, float, com.mojang.blaze3d.vertex.PoseStack, net.minecraft.client.renderer.SubmitNodeCollector, int);
+  private void swingArm(float, com.mojang.blaze3d.vertex.PoseStack, int, net.minecraft.world.entity.HumanoidArm);
+  public void tick();
+== net.minecraft.client.renderer.GameRenderer
+public class net.minecraft.client.renderer.GameRenderer implements net.minecraft.world.waypoints.TrackedWaypoint$Projector,java.lang.AutoCloseable {
+  private float renderDistance;
+  public final net.minecraft.client.renderer.ItemInHandRenderer itemInHandRenderer;
+  private final net.minecraft.client.renderer.ScreenEffectRenderer screenEffectRenderer;
+  private final net.minecraft.client.renderer.RenderBuffers renderBuffers;
+  private float fovModifier;
+  private float oldFovModifier;
+  private boolean renderBlockOutline;
+  private final net.minecraft.client.renderer.LightTexture lightTexture;
+  private final net.minecraft.client.renderer.texture.OverlayTexture overlayTexture;
+  private net.minecraft.client.renderer.PanoramicScreenshotParameters panoramicScreenshotParameters;
+  protected final net.minecraft.client.renderer.CubeMap cubeMap;
+  protected final net.minecraft.client.renderer.PanoramaRenderer panorama;
+  private final net.minecraft.client.renderer.fog.FogRenderer fogRenderer;
+  private final net.minecraft.client.gui.render.GuiRenderer guiRenderer;
+  final net.minecraft.client.gui.render.state.GuiRenderState guiRenderState;
+  private final net.minecraft.client.renderer.state.LevelRenderState levelRenderState;
+  private final net.minecraft.client.renderer.SubmitNodeStorage submitNodeStorage;
+  private final net.minecraft.client.renderer.feature.FeatureRenderDispatcher featureRenderDispatcher;
+  private final net.minecraft.client.renderer.GlobalSettingsUniform globalSettingsUniform;
+  private final net.minecraft.client.renderer.PerspectiveProjectionMatrixBuffer levelProjectionMatrixBuffer;
+  private final net.minecraft.client.renderer.CachedPerspectiveProjectionMatrixBuffer hud3dProjectionMatrixBuffer;
+  public net.minecraft.client.renderer.GameRenderer(net.minecraft.client.Minecraft, net.minecraft.client.renderer.ItemInHandRenderer, net.minecraft.client.renderer.RenderBuffers, net.minecraft.client.renderer.block.BlockRenderDispatcher);
+  public net.minecraft.client.renderer.SubmitNodeStorage getSubmitNodeStorage();
+  public net.minecraft.client.renderer.feature.FeatureRenderDispatcher getFeatureRenderDispatcher();
+  public net.minecraft.client.renderer.state.LevelRenderState getLevelRenderState();
+  public void setPanoramicScreenshotParameters(net.minecraft.client.renderer.PanoramicScreenshotParameters);
+  public net.minecraft.client.renderer.PanoramicScreenshotParameters getPanoramicScreenshotParameters();
+  private void tickFov();
+  private float getFov(net.minecraft.client.Camera, float, boolean);
+  private void bobHurt(com.mojang.blaze3d.vertex.PoseStack, float);
+  private void bobView(com.mojang.blaze3d.vertex.PoseStack, float);
+  private void renderItemInHand(float, boolean, org.joml.Matrix4f);
+  public void render(net.minecraft.client.DeltaTracker, boolean);
+  private void renderActiveTextDebug();
+  public void renderLevel(net.minecraft.client.DeltaTracker);
+  public net.minecraft.client.renderer.LightTexture lightTexture();
+  public net.minecraft.client.renderer.texture.OverlayTexture overlayTexture();
+  public net.minecraft.client.renderer.GlobalSettingsUniform getGlobalSettingsUniform();
+  public net.minecraft.client.renderer.PanoramaRenderer getPanorama();
+  private void method_75836(net.minecraft.client.gui.render.state.GuiTextRenderState);
+== net.minecraft.client.renderer.entity.state.LivingEntityRenderState
+Compiled from "LivingEntityRenderState.java"
+public class net.minecraft.client.renderer.entity.state.LivingEntityRenderState extends net.minecraft.client.renderer.entity.state.EntityRenderState {
+  public float bodyRot;
+  public float yRot;
+  public float xRot;
+  public float deathTime;
+  public float walkAnimationPos;
+  public float walkAnimationSpeed;
+  public float scale;
+  public float ageScale;
+  public float ticksSinceKineticHitFeedback;
+  public boolean isUpsideDown;
+  public boolean isFullyFrozen;
+  public boolean isBaby;
+  public boolean isInWater;
+  public boolean isAutoSpinAttack;
+  public boolean hasRedOverlay;
+  public boolean isInvisibleToPlayer;
+  public net.minecraft.core.Direction bedOrientation;
+  public net.minecraft.world.entity.Pose pose;
+  public final net.minecraft.client.renderer.item.ItemStackRenderState headItem;
+  public float wornHeadAnimationPos;
+  public net.minecraft.world.level.block.SkullBlock$Type wornHeadType;
+  public net.minecraft.world.item.component.ResolvableProfile wornHeadProfile;
+  public net.minecraft.client.renderer.entity.state.LivingEntityRenderState();
+  public boolean hasPose(net.minecraft.world.entity.Pose);
+}
+== net.minecraft.client.renderer.entity.state.EntityRenderState
+Compiled from "EntityRenderState.java"
+public class net.minecraft.client.renderer.entity.state.EntityRenderState {
+  public static final int NO_OUTLINE;
+  public net.minecraft.world.entity.EntityType<?> entityType;
+  public double x;
+  public double y;
+  public double z;
+  public float ageInTicks;
+  public float boundingBoxWidth;
+  public float boundingBoxHeight;
+  public float eyeHeight;
+  public double distanceToCameraSq;
+  public boolean isInvisible;
+  public boolean isDiscrete;
+  public boolean displayFireAnimation;
+  public int lightCoords;
+  public int outlineColor;
+  public net.minecraft.world.phys.Vec3 passengerOffset;
+  public net.minecraft.network.chat.Component nameTag;
+  public net.minecraft.world.phys.Vec3 nameTagAttachment;
+  public java.util.List<net.minecraft.client.renderer.entity.state.EntityRenderState$LeashState> leashStates;
+  public float shadowRadius;
+  public final java.util.List<net.minecraft.client.renderer.entity.state.EntityRenderState$ShadowPiece> shadowPieces;
+  public net.minecraft.client.renderer.entity.state.EntityRenderState();
+  public boolean appearsGlowing();
+  public void fillCrashReportCategory(net.minecraft.CrashReportCategory);
+}

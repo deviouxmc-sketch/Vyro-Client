@@ -4,7 +4,6 @@ import com.mojang.blaze3d.platform.InputConstants;
 import gg.vyro.client.Metrics;
 import gg.vyro.client.config.FeatureConfig;
 import gg.vyro.client.config.VyroConfig;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
@@ -17,20 +16,26 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionResult;
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWScrollCallback;
 
-/** Gameplay features: zoom, toggle sprint/sneak, hit sounds, and the per-tick bookkeeping. */
+/** Gameplay features: zoom, freelook, toggle sprint/sneak, hit sounds, and per-tick bookkeeping. */
 public final class Features {
     private Features() {}
 
     public static KeyMapping openMenu;
     private static KeyMapping zoomKey;
+    private static KeyMapping freelookKey;
     private static KeyMapping sneakToggleKey;
     private static KeyMapping sprintToggleKey;
 
-    private static boolean zooming;
-    private static int savedFov;
     private static boolean sneakLatched;
     private static boolean sprintWasForced;
+    private static boolean zoomToggled;
+    private static boolean freelookToggled;
+    private static boolean zoomOn;
+    private static boolean zoomDirty;
+    private static boolean scrollHooked;
+    private static GLFWScrollCallback previousScroll;
 
     public static final String[] HIT_SOUNDS = {"ding", "arrow", "levelup", "anvil"};
 
@@ -38,11 +43,11 @@ public final class Features {
         KeyMapping.Category cat = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("vyro", "main"));
         openMenu = KeyBindingHelper.registerKeyBinding(new KeyMapping("key.vyro.menu", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, cat));
         zoomKey = KeyBindingHelper.registerKeyBinding(new KeyMapping("key.vyro.zoom", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_C, cat));
+        freelookKey = KeyBindingHelper.registerKeyBinding(new KeyMapping("key.vyro.freelook", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_ALT, cat));
         sprintToggleKey = KeyBindingHelper.registerKeyBinding(new KeyMapping("key.vyro.toggle_sprint", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, cat));
         sneakToggleKey = KeyBindingHelper.registerKeyBinding(new KeyMapping("key.vyro.toggle_sneak", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, cat));
 
         ClientTickEvents.END_CLIENT_TICK.register(Features::tick);
-        ClientLifecycleEvents.CLIENT_STOPPING.register(mc -> restoreFov(mc));
 
         AttackEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {
             if (level.isClientSide()) {
@@ -61,7 +66,6 @@ public final class Features {
             mc.setScreen(new gg.vyro.client.ui.VyroMenuScreen(null));
         }
 
-        // sprint toggle key flips the saved setting; chat feedback so it is never a mystery
         while (sprintToggleKey.consumeClick()) {
             f.toggleSprint = !f.toggleSprint;
             VyroConfig.get().save();
@@ -73,7 +77,8 @@ public final class Features {
             if (mc.player != null) mc.player.displayClientMessage(Component.literal("[VYRO] Toggle sneak " + (sneakLatched ? "on" : "off")), true);
         }
 
-        if (mc.player != null && mc.screen == null) {
+        boolean inGame = mc.player != null && mc.screen == null;
+        if (inGame) {
             if (f.toggleSprint) {
                 mc.options.keySprint.setDown(true);
                 sprintWasForced = true;
@@ -84,24 +89,64 @@ public final class Features {
             if (sneakLatched) mc.options.keyShift.setDown(true);
         }
 
-        // Zoom: drive the FOV option while the key is held, restore on release.
-        boolean want = zoomKey.isDown() && mc.screen == null && mc.player != null;
-        if (want && !zooming) {
-            savedFov = mc.options.fov().get();
-            zooming = true;
+        if (!scrollHooked && mc.getWindow() != null) {
+            // Chain our own scroll callback in front of Minecraft's so zoom can use the wheel.
+            previousScroll = GLFW.glfwSetScrollCallback(mc.getWindow().handle(), Features::onScroll);
+            scrollHooked = true;
         }
-        if (want) {
-            mc.options.fov().set(Math.max(30, Math.min(110, f.zoomFov)));
-        } else if (zooming) {
-            restoreFov(mc);
+
+        // Zoom: hold the key, or press once when toggle mode is on. The FOV mixin applies it smoothly.
+        if (f.zoomEnabled && inGame) {
+            if (f.zoomToggleMode) {
+                while (zoomKey.consumeClick()) zoomToggled = !zoomToggled;
+                zoomOn = zoomToggled;
+            } else {
+                while (zoomKey.consumeClick()) { /* drain */ }
+                zoomToggled = false;
+                zoomOn = zoomKey.isDown();
+            }
+        } else {
+            zoomToggled = false;
+            zoomOn = false;
+        }
+        Zoom.setTarget(zoomOn ? 1.0f / Math.max(1.1f, f.zoomFactor) : 1.0f);
+        if (!zoomOn && zoomDirty) {
+            VyroConfig.get().save(); // magnification changed by scrolling is remembered
+            zoomDirty = false;
+        }
+
+        // Freelook: look around without turning the player.
+        boolean wantFreelook;
+        if (f.freelookEnabled && inGame) {
+            if (f.freelookToggleMode) {
+                while (freelookKey.consumeClick()) freelookToggled = !freelookToggled;
+                wantFreelook = freelookToggled;
+            } else {
+                while (freelookKey.consumeClick()) { /* drain */ }
+                freelookToggled = false;
+                wantFreelook = freelookKey.isDown();
+            }
+        } else {
+            freelookToggled = false;
+            wantFreelook = false;
+        }
+        if (wantFreelook && !Freelook.requested()) {
+            Freelook.start(mc.player.getYRot(), mc.player.getXRot());
+        } else if (!wantFreelook && Freelook.requested()) {
+            Freelook.stop();
         }
     }
 
-    private static void restoreFov(Minecraft mc) {
-        if (zooming) {
-            mc.options.fov().set(savedFov);
-            zooming = false;
+    /** Mouse wheel: while zoomed it changes magnification (and is not passed on, so the hotbar stays put). */
+    private static void onScroll(long window, double xOffset, double yOffset) {
+        Minecraft mc = Minecraft.getInstance();
+        if (zoomOn && mc.screen == null && yOffset != 0) {
+            FeatureConfig f = VyroConfig.get().features;
+            f.zoomFactor = Math.max(1.5f, Math.min(10.0f, f.zoomFactor + (float) Math.signum(yOffset) * 0.5f));
+            zoomDirty = true;
+            return;
         }
+        if (previousScroll != null) previousScroll.invoke(window, xOffset, yOffset);
     }
 
     public static SoundEvent soundFor(String type) {
